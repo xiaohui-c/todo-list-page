@@ -208,7 +208,6 @@
 </template>
 
 <script>
-import axios from "axios";
 export default {
   name: "App",
   data() {
@@ -296,16 +295,14 @@ export default {
       this.getData();
     },
     // 使用ES6函数参数配置默认参数
-    getData(status = -1, page = 1) {
-      axios({
-        url: `https://www.xiaohui.ac.cn/fantasty/list/${status}/${page}`,
-      }).then((res) => {
+  async  getData(status = -1, page = 1) {
+      const {data:res} = await this.$http.get(`list/${status}/${page}`)
         if (res.status == 200) {
           this.lock = true;
-          this.rows = res.data.list.rows;
-          this.total = res.data.list.count;
+          this.rows = res.list.rows;
+          this.total = res.list.count;
         }
-      });
+
     },
     // 打开确认dialog
     suredialog(formName) {
@@ -319,17 +316,14 @@ export default {
       });
     },
     // 正式向后台发送添加的数据
-    confirmAdd() {
-      axios({
-        url: "https://www.xiaohui.ac.cn/fantasty/create",
-        method: "post",
-        // 1.不用转化为JSON  2.要使用data来包装数据  3.要分解对象的每一个值
-        data: {
+  async  confirmAdd() {
+      let data = {
           name: this.ruleForm.name,
           deadline: this.ruleForm.deadline,
           content: this.ruleForm.content,
-        },
-      }).then((res) => {
+        }
+      const {data:res} = await this.$http.post('create',data)
+      
         if (res.status === 200) {
           this.drawer = false;
           setTimeout(() => {
@@ -341,7 +335,6 @@ export default {
         } else {
           this.open2();
         }
-      });
     },
     // 点击重置表单
     resetForm(formName) {
@@ -383,25 +376,25 @@ export default {
     },
     // 确认弹窗的复用
     open(content, way, id) {
-      this.$confirm(`${content}`, "提示", {
+     let confirmResult = this.$confirm(`${content}`, "提示", {
         confirmButtonText: "确定",
         cancelButtonText: "取消",
         type: "warning",
       })
-        .then(() => {
-          axios({
-            url: `https://www.xiaohui.ac.cn/fantasty/${way}/${id}`,
-          }).then((res) => {
+
+      confirmResult.then(async () => {
+        const {data:res} = await this.$http.get('/',{params:{way,id}})
+
             if (res.status == 200) {
               this.$message({
                 type: "success",
-                message: res.data.message,
+                message: res.message,
               });
               this.handleCurrentChange(this.momentPage);
             } else {
               this.$message.error("操作失败");
             }
-          });
+         
         })
         .catch(() => {
           this.$message({
@@ -425,30 +418,24 @@ export default {
     },
     // 状态修改
     Statuschange(id) {
-      this.$confirm("此操作将修改该任务状态为完成, 是否继续?", "提示", {
+    const confirmResult =  this.$confirm("此操作将修改该任务状态为完成, 是否继续?", "提示", {
         confirmButtonText: "确定",
         cancelButtonText: "取消",
         type: "warning",
       })
-        .then(() => {
-          axios({
-            url: "https://www.xiaohui.ac.cn/fantasty/update_status",
-            method: "post",
-            // 1.不用转化为JSON  2.要使用data来包装数据  3.要分解对象的每一个值
-            data: {
+      confirmResult.then( async ()=>{
+        let data = {
               id: id,
               status: 2,
-            },
-          }).then((res) => {
+            }
+        const {data:res} = await this.$http.post('update_status',data)
             if (res.status === 200) {
-              this.open1(res.data.message);
+              this.open1(res.message);
               this.handleCurrentChange(this.momentPage);
             } else {
               this.$message.error("任务状态修改失败");
             }
-          });
-        })
-        .catch(() => {
+      }).catch(() => {
           this.$message({
             type: "info",
             message: "已取消修改",
@@ -464,31 +451,30 @@ export default {
           Object.assign(newForm, this.ruleForm);
           // newForm.deadline = this.timeFormate(newForm.deadline);
           // newForm.id = this.editId;
-          this.$confirm("确认修改所选任务吗？", "提示", {
+        const confirmResult =  this.$confirm("确认修改所选任务吗？", "提示", {
             confirmButtonText: "确定",
             cancelButtonText: "取消",
             type: "warning",
-          }).then(() => {
-            axios({
-              url: "https://www.xiaohui.ac.cn/fantasty/update",
-              method: "post",
-              // 1.不用转化为JSON  2.要使用data来包装数据  3.要分解对象的每一个值
-              data: {
+          })
+
+          confirmResult.then(async () => {
+            let data = {
                 name: newForm.name,
                 deadline: newForm.deadline,
                 content: newForm.content,
                 id: newForm.id,
-              },
-            }).then((res) => {
-              if (res.status == 200) {
-                this.open1(res.data.message);
-                this.handleCurrentChange(this.momentPage);
-                this.drawer = false;
-              } else {
-                this.$message.error("操作失败");
               }
-            });
+            const {data:res} = await this.$http.post('update',data)
+            
+            if (res.status == 200) {
+              this.open1(res.message);
+              this.handleCurrentChange(this.momentPage);
+              this.drawer = false;
+            } else {
+              this.$message.error("操作失败");
+            }
           });
+          
         } else {
           alert("mistake");
           return false;
